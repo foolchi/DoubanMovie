@@ -5,127 +5,22 @@ import re
 import cymysql
 import urllib.request
 import time
-
-
-ratingStrings = ['allstar10', 'allstar20', 'allstar30', 'allstar40', 'allstar50']
-
-class GetMovieComments:
-    def __init__(self, id):
-        self.id = id
-        self.url = 'http://movie.douban.com/subject/' + str(id) + '/comments'
-        self.nRating = len(ratingStrings)
-        self.userPattern = re.compile(r'/people/((\d|\D)+)/$')
-
-    def setDatabase(self, user, passwd, db):
-        self.user = user
-        self.passwd = passwd
-        self.db = db
-        self.conn = cymysql.connect(user = self.user, passwd = self.passwd, db = self.db
-        )
-        self.cur = self.conn.cursor()
-        self.query = 'INSERT INTO m' + str(self.id) + '(id, rating, comment) VALUES (%s, %s, %s)'
-
-        try:
-            self.cur.execute('CREATE TABLE m' + str(self.id) + '(id TINYTEXT, rating INTEGER, comment MEDIUMTEXT)')
-
-        except:
-            pass
-        self.cur.execute('INSERT INTO m' + str(self.id) + '(id, rating, comment) VALUES (%s, %s, %s)', ('foolchi', 3, "Test"))
-        print("database created")
-
-    def getnComments(self):
-        print(self.url)
-        req = urllib.request.Request(self.url, headers={'User-Agent' : "Chrome"})
-        con = urllib.request.urlopen(req)
-        nSoup = BeautifulSoup(con.read())
-        #print(nSoup.prettify())
-        nComments = nSoup.find(class_ = 'fleft')
-        numberPattern = re.compile(r'\d+')
-        number = int(numberPattern.search(nComments.get_text()).group(0))
-        number = number if number > 0 else 0
-        self.nComments = number
-        pages = nSoup.find_all(id = 'paginator')[-1].find_all('a')
-        self.nextPage = self.url + pages[-1]['href']
-        comments = nSoup.find_all(class_ = 'comment-item')
-        for comment in comments:
-            userId = self.userPattern.search(comment.a['href']).group(1)
-            rating = 0
-            spans = comment.find_all('span')
-            for span in spans:
-                classes = span['class']
-                for i in range(self.nRating):
-                    if ratingStrings[i] in classes:
-                        rating = i + 1
-                        break
-                if (rating != 0):
-                    break
-            commentString = str(comment.p.contents[0])
-            print("UserId %s, rating %s, commentString %s" % (userId, rating, commentString))
-            self.cur.execute(self.query, (str(userId), str(rating), str(commentString)))
-        self.conn.commit()
-        return number
-
-    def getAllComments(self):
-        self.getnComments()
-
-        return
-
-    def getComments(self, url):
-        print(url)
-        req = urllib.request.Request(url, headers={'User-Agent' : "Chrome"})
-        conn = urllib.request.urlopen(req)
-        content = None
-        try:
-            content = conn.read()
-        except:
-            print("Sleep for %s" % url)
-            time.sleep(3)
-            self.getComments(url)
-            return
-        commentSoup = BeautifulSoup(content)
-        pages = commentSoup.find_all(id = 'paginator')[-1].find_all('a')
-        if (len(pages) == 1):
-            self.nextPage = None
-            return
-        self.nextPage = self.url + pages[-1]['href']
-        comments = commentSoup.find_all(class_ = 'comment-item')
-        for comment in comments:
-            userId = self.userPattern.search(comment.a['href']).group(1)
-            rating = 0
-            spans = comment.find_all('span')
-            for span in spans:
-                classes = span['class']
-                for i in range(self.nRating):
-                    if ratingStrings[i] in classes:
-                        rating = i + 1
-                        break
-                if (rating != 0):
-                    break
-            commentString = str(comment.p.contents[0])
-            print("UserId %s, rating %s, commentString %s" % (userId, rating, commentString))
-            self.cur.execute(self.query, (str(userId), str(rating), str(commentString)))
-        self.conn.commit()
-
-
-    def finish(self):
-        self.conn.commit()
-        self.cur.close()
-        self.conn.close()
-
-
-
-    def __end__(self):
-        self.conn.commit()
-        self.cur.close()
-        self.conn.close()
-
-
-get = 2
-
+from getmoviecomments import GetMovieComments
+import getmoviecomments
+ratingStrings = getmoviecomments.ratingStrings
+get = 0
+#后会无期: 25805741
+#小时代: 24847340
+#老男孩: 25755645
+#变形金刚: 7054604
+#布达佩斯大饭店: 11525673
+#辩护人: 21937445
+currentId = 21937445
 if (get == 0):
-    g = GetMovieComments(25805741)
+    g = GetMovieComments(currentId)
     g.setDatabase('foolchi', '1', 'movie')
-    g.getnComments()
+    #g.getnComments()
+    g.getComments(g.url, True)
     #g.getComments('http://movie.douban.com/subject/25805741/comments')
     #print(g.nextPage)
     while (g.nextPage is not None):
@@ -138,7 +33,7 @@ if (get == 0):
 if (get == 2):
     conn = cymysql.connect(user = 'foolchi', passwd = '1', db = 'movie')
     cur = conn.cursor()
-    cur.execute('SELECT * FROM m25805741')
+    cur.execute('SELECT * FROM m' + str(currentId))
     fetchall = cur.fetchall()
     size = len(fetchall)
     average = 0
@@ -154,8 +49,50 @@ if (get == 2):
     cur.close()
     conn.close()
 
+if (get == 3):
+    f = open('collections_empty.html')
+    soup = BeautifulSoup(f)
+    tables = soup.find_all('table')
+    userPattern = re.compile(r'/people/((\d|\D)+)/$')
+    ratings = len(ratingStrings)
+
+    for table in tables:
+        try:
+            userId = userPattern.search(table.a.get('href')).group(1)
+        except AttributeError:
+            continue
+        print(userId)
+        rating = 0
+        if (table.p != None):
+            spans = table.p.find_all('span')
+            #print(table)
+            for span in spans:
+                #print(span)
+                classes = span['class']
+                #print(classes)
+                for i in range (ratings):
+                    if ratingStrings[i] in classes:
+                        rating = i + 1
+                        break
+                #print('--------------')
+                if (rating != 0):
+                    print("userId: %s, rating: %d" % (userId, rating))
+                    print('==============')
+                    break
+    nextPages = soup.find_all(class_ = 'next')
+    nextPage = nextPages[0].a['href']
+    if len(soup.find_all(class_ = 'prev')) == 0:
+        print('Empty')
+    print(nextPage)
+
+
+
+
+#compare()
 '''
-f = open('movie.html')
+
+
+f = open('collections.html')
 soup = BeautifulSoup(f)
 #print(soup.prettify())
 comment = soup.find_all(class_ = "comment-item")
