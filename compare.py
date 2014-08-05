@@ -93,6 +93,49 @@ def trend(id, seperates = 10):
         trends.reverse()
         return trends
 
+def checkfor5(id, seperates = 10):
+    conn = cymysql.connect(user = 'foolchi', passwd = '1', db = 'movie')
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM m' + str(id))
+    fetchall = cur.fetchall()
+    size = len(fetchall)
+    dic1 = dict()
+    ratings = []
+    n = 0
+    step = size // seperates
+    if (size <= 0):
+        print("Empty")
+    else:
+        for i in range(size):
+            info = fetchall[i]
+            n += 1
+            if (n % step == 0):
+                nString = 0
+                nInt = 0
+                for key, val in dic1.items():
+                    if (val == 5):
+                        try:
+                            int(key)
+                            nInt += 1
+                        except:
+                            nString += 1
+                print("Int: %d, String: %d" % (nInt, nString))
+                dic1.clear()
+            userId = info[0]
+            rating = int(info[1])
+            ratings.append(rating)
+            dic1[userId] = rating
+        '''
+        nRating = len(ratings)
+        trends = []
+
+        for i in range(seperates):
+            trends.append(sum(ratings[i * step: (i+1)*step]) / step)
+        #print(trends)
+        trends.reverse()
+        return trends
+        '''
+
 
 #后会无期: 25805741
 #小时代: 24847340
@@ -109,6 +152,8 @@ id6 = 21937445
 movieDict = {'后会无期': 25805741,'小时代3': 24847340,'老男孩': 25755645,'变形金刚': 7054604, '布达佩斯大饭店': 11525673, '辩护人': 21937445}
 idList = [id1, id2, id3, id4, id5, id6]
 
+checkfor5(id1)
+"""
 
 sep = 5
 i = 0
@@ -116,6 +161,7 @@ for id in idList:
     plt.plot(range(sep), trend(id, sep), color = colors[i])
     i += 1
 plt.show()
+"""
 '''
 for key1, val1 in movieDict.items():
     for key2, val2 in movieDict.items():
