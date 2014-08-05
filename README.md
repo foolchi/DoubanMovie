@@ -14,3 +14,5 @@ g = GetMovieComments(movieId)
 g.setDatabase(user, passwd, database name)
 g.getAllComments()
 ```
+
+You can read the data from your local database now.
